@@ -17,7 +17,7 @@ function VideoCall() {
             container: containerRef.current,
             sharedLinks:[{
               name:'Copy link',
-              url:`http://localhost:3000/room/${roomId}`
+              url:`${process.env.REACT_APP_API_URL}videocall/${roomId}`
             }],
             scenario: {
                 mode: ZegoUIKitPrebuilt.OneONoneCall
