@@ -9,7 +9,6 @@ function VideoCall() {
     useEffect(() => {
         const appID = 177507006;
         const serverScreatId = 'dbf22027663c3c8e8b22ae024d893cac';
-        console.log('roomId',roomId)
         const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(appID, serverScreatId, roomId, Date.now().toString(), "Irfan hayat");
         const zc = ZegoUIKitPrebuilt.create(kitToken);
         
