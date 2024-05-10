@@ -19,7 +19,7 @@ function VideoCall() {
               url:`${process.env.REACT_APP_API_URL}videocall/${roomId}`
             }],
             scenario: {
-                mode: ZegoUIKitPrebuilt.OneONoneCall
+                mode: ZegoUIKitPrebuilt.GroupCall
             },
             showScreenSharingButton: false
         });
