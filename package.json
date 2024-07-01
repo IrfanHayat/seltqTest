@@ -10,11 +10,19 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "@zegocloud/zego-uikit-prebuilt": "^2.0.1",
+    "axios": "^1.7.2",
+    "dsp.js": "^1.0.1",
+    "microsoft-cognitiveservices-speech-sdk": "^1.38.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.23.0",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "react-speech-recognition": "^3.10.0",
+    "simple-peer": "^9.11.1",
+    "socket.io-client": "^4.7.5",
+    "wavesurfer.js": "^7.7.15",
+    "web-vitals": "^2.1.4",
+    "youtube-player": "^5.6.0"
   },
   "scripts": {
     "start": "react-scripts start",
