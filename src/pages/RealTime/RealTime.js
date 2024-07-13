@@ -677,7 +677,393 @@
 
 
 
-import React, { useState, useRef, useEffect } from 'react';
+// import React, { useState, useRef, useEffect } from 'react';
+// import io from 'socket.io-client';
+// import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
+
+// const socket = io('http://localhost:3001'); // Connect to your Socket.io server
+
+// const TabSharing = () => {
+//   const [sharedContent, setSharedContent] = useState(null);
+//   const [qaHistory, setQAHistory] = useState([]); // Store question history
+//   const [isRecording, setIsRecording] = useState(false);
+
+//   const videoRef = useRef(null);
+//   const speechConfig = useRef(null);
+//   const audioConfig = useRef(null);
+//   const recognizer = useRef(null);
+
+//   useEffect(() => {
+//     // Initialize Azure Speech SDK configurations
+//     speechConfig.current = sdk.SpeechConfig.fromSubscription('ba35918e9cab49f2a983089f2f4a2fc0', 'southcentralus');
+//     speechConfig.current.speechRecognitionLanguage = 'en-US';
+
+//     // Socket.io event listeners
+//     socket.on('answerFromServer', handleAnswerFromServer);
+
+//     return () => {
+//       socket.off('answerFromServer', handleAnswerFromServer);
+//     };
+//   }, []);
+
+//   const handleStartSharing = async () => {
+//     try {
+//       const stream = await navigator.mediaDevices.getDisplayMedia({
+//         video: true,
+//         audio: {
+//           systemAudio: 'include',
+//           echoCancellation: true,
+//           noiseSuppression: true,
+//           sampleRate: 44100, // Higher sample rate for better quality
+//         },
+//       });
+
+//       if (!stream) {
+//         throw new Error('Failed to obtain media stream.');
+//       }
+
+//       setSharedContent(stream);
+
+//       const audioTracks = stream.getAudioTracks();
+//       const audioStream = new MediaStream([audioTracks[0]]);
+
+//       audioConfig.current = sdk.AudioConfig.fromStreamInput(audioStream);
+//       recognizer.current = new sdk.SpeechRecognizer(speechConfig.current, audioConfig.current);
+
+//       recognizer.current.recognizing = (s, e) => {
+//         console.log(`RECOGNIZING: Text=${e.result.text}`);
+//       };
+
+//       recognizer.current.recognized = (s, e) => {
+//         if (e.result.reason === sdk.ResultReason.RecognizedSpeech) {
+//           console.log(`RECOGNIZED: Text=${e.result.text}`);
+//           const currentTime = new Date();
+//           const newQuestion = {
+//             question: e.result.text,
+//             startTime: currentTime,
+//             completionTime: null,
+//             updateTimes: [currentTime],
+//             currentTime: currentTime,
+//             answer: '', // Initialize an empty answer field
+//           };
+
+//           setQAHistory(prevHistory => [...prevHistory, newQuestion]);
+
+//           socket.emit('questionToServer', { question: e.result.text }); // Send question to backend via Socket.io
+//         } else if (e.result.reason === sdk.ResultReason.NoMatch) {
+//           console.log('NOMATCH: Speech could not be recognized.');
+//         }
+//       };
+
+//       recognizer.current.canceled = (s, e) => {
+//         console.log(`CANCELED: Reason=${e.reason}`);
+//         if (e.reason === sdk.CancellationReason.Error) {
+//           console.error(`CANCELED: ErrorDetails=${e.errorDetails}`);
+//         }
+//         recognizer.current.stopContinuousRecognitionAsync();
+//       };
+
+//       recognizer.current.sessionStopped = (s, e) => {
+//         console.log('Session stopped.');
+
+//         setQAHistory(prevHistory => {
+//           const lastQuestionIndex = prevHistory.length - 1;
+
+//           if (lastQuestionIndex >= 0) {
+//             const updatedQA = [...prevHistory];
+//             updatedQA[lastQuestionIndex].completionTime = new Date();
+//             return updatedQA;
+//           }
+//           return prevHistory;
+//         });
+
+//         recognizer.current.stopContinuousRecognitionAsync();
+//       };
+
+//       recognizer.current.startContinuousRecognitionAsync();
+//       setIsRecording(true);
+//     } catch (error) {
+//       console.error('Error accessing media devices:', error);
+//     }
+//   };
+
+//   const handleStopSharing = () => {
+//     if (recognizer.current && isRecording) {
+//       recognizer.current.stopContinuousRecognitionAsync();
+//       setIsRecording(false);
+//     }
+//   };
+
+//   const handleAnswerFromServer = (answer) => {
+//     setQAHistory(prevHistory => {
+//       const lastQuestionIndex = prevHistory.length - 1;
+
+//       if (lastQuestionIndex >= 0) {
+//         const updatedQA = [...prevHistory];
+//         updatedQA[lastQuestionIndex].answer = answer;
+//         return updatedQA;
+//       }
+//       return prevHistory;
+//     });
+//   };
+
+//   return (
+//     <div>
+//       {!isRecording ? (
+//         <button onClick={handleStartSharing}>Start Sharing</button>
+//       ) : (
+//         <button onClick={handleStopSharing}>Stop Sharing</button>
+//       )}
+//       <SharedContent sharedStream={sharedContent} videoRef={videoRef} qaHistory={qaHistory} />
+//     </div>
+//   );
+// };
+
+// const SharedContent = ({ sharedStream, videoRef, qaHistory }) => {
+//   useEffect(() => {
+//     if (sharedStream && videoRef.current) {
+//       videoRef.current.srcObject = sharedStream;
+
+//       // Add event listener for errors (optional but useful for debugging)
+//       videoRef.current.addEventListener('error', (event) => {
+//         console.error('Video playback error:', event);
+//       });
+//     }
+
+//     return () => {
+//       if (videoRef.current && videoRef.current.srcObject) {
+//         videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+//       }
+//     };
+//   }, [sharedStream, videoRef]);
+
+//   return (
+//     <div>
+//       <h2>Shared Content</h2>
+//       <video ref={videoRef} controls autoPlay style={{ width: '100%', height: 'auto' }} />
+//       {qaHistory.map((qa, index) => (
+//         <div key={index} style={{ marginBottom: '20px' }}>
+//           <div style={{ marginBottom: '10px' }}>
+//             <h4>Question</h4>
+//             <p>{qa.question}</p>
+//             <div>
+//               {qa.updateTimes.map((time, timeIndex) => (
+//                 <p key={timeIndex}>{time.toLocaleTimeString()}</p>
+//               ))}
+//             </div>
+//           </div>
+//           <div style={{ marginBottom: '10px' }}>
+//             <h4>Answer</h4>
+//             <p>{qa.answer}</p>
+//           </div>
+//         </div>
+//       ))}
+//     </div>
+//   );
+// };
+
+// export default TabSharing;
+
+
+
+// import React, { useState, useRef, useEffect } from 'react';
+// import io from 'socket.io-client';
+// import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
+
+// const socket = io('http://localhost:3001'); // Connect to your Socket.io server
+
+// const TabSharing = () => {
+//   const [sharedContent, setSharedContent] = useState(null);
+//   const [qaHistory, setQAHistory] = useState([]); // Store question history
+//   const [isRecording, setIsRecording] = useState(false);
+
+//   const videoRef = useRef(null);
+//   const speechConfig = useRef(null);
+//   const audioConfig = useRef(null);
+//   const recognizer = useRef(null);
+
+//   useEffect(() => {
+//     // Initialize Azure Speech SDK configurations
+//     speechConfig.current = sdk.SpeechConfig.fromSubscription('ba35918e9cab49f2a983089f2f4a2fc0', 'southcentralus');
+//     speechConfig.current.speechRecognitionLanguage = 'en-US';
+
+//     // Socket.io event listeners
+//     socket.on('answerFromServer', handleAnswerFromServer);
+
+//     return () => {
+//       socket.off('answerFromServer', handleAnswerFromServer);
+//     };
+//   }, []);
+
+//   const handleStartSharing = async () => {
+//     try {
+//       const stream = await navigator.mediaDevices.getDisplayMedia({
+//         video: true,
+//         audio: {
+//           systemAudio: 'include',
+//           echoCancellation: true,
+//           noiseSuppression: true,
+//           sampleRate: 44100, // Higher sample rate for better quality
+//         },
+//       });
+
+//       if (!stream) {
+//         throw new Error('Failed to obtain media stream.');
+//       }
+
+//       setSharedContent(stream);
+
+//       const audioTracks = stream.getAudioTracks();
+//       const audioStream = new MediaStream([audioTracks[0]]);
+
+//       audioConfig.current = sdk.AudioConfig.fromStreamInput(audioStream);
+//       recognizer.current = new sdk.SpeechRecognizer(speechConfig.current, audioConfig.current);
+
+//       recognizer.current.recognizing = (s, e) => {
+//         console.log(`RECOGNIZING: Text=${e.result.text}`);
+//         setQAHistory(prevHistory => {
+//           const lastQuestionIndex = prevHistory.length - 1;
+
+//           if (lastQuestionIndex >= 0 && prevHistory[lastQuestionIndex].completionTime === null) {
+//             const updatedQA = [...prevHistory];
+//             updatedQA[lastQuestionIndex].question = e.result.text;
+//             return updatedQA;
+//           } else {
+//             const newQuestion = {
+//               question: e.result.text,
+//               startTime: new Date(),
+//               completionTime: null,
+//               answer: '', // Initialize an empty answer field
+//             };
+//             return [...prevHistory, newQuestion];
+//           }
+//         });
+//       };
+
+//       recognizer.current.recognized = (s, e) => {
+//         if (e.result.reason === sdk.ResultReason.RecognizedSpeech) {
+//           console.log(`RECOGNIZED: Text=${e.result.text}`);
+//           setQAHistory(prevHistory => {
+//             const updatedQA = [...prevHistory];
+//             updatedQA[updatedQA.length - 1].question = e.result.text;
+//             updatedQA[updatedQA.length - 1].completionTime = new Date();
+//             return updatedQA;
+//           });
+
+//           socket.emit('questionToServer', { question: e.result.text }); // Send question to backend via Socket.io
+//         } else if (e.result.reason === sdk.ResultReason.NoMatch) {
+//           console.log('NOMATCH: Speech could not be recognized.');
+//         }
+//       };
+
+//       recognizer.current.canceled = (s, e) => {
+//         console.log(`CANCELED: Reason=${e.reason}`);
+//         if (e.reason === sdk.CancellationReason.Error) {
+//           console.error(`CANCELED: ErrorDetails=${e.errorDetails}`);
+//         }
+//         recognizer.current.stopContinuousRecognitionAsync();
+//       };
+
+//       recognizer.current.sessionStopped = (s, e) => {
+//         console.log('Session stopped.');
+
+//         setQAHistory(prevHistory => {
+//           const lastQuestionIndex = prevHistory.length - 1;
+
+//           if (lastQuestionIndex >= 0) {
+//             const updatedQA = [...prevHistory];
+//             updatedQA[lastQuestionIndex].completionTime = new Date();
+//             return updatedQA;
+//           }
+//           return prevHistory;
+//         });
+
+//         recognizer.current.stopContinuousRecognitionAsync();
+//       };
+
+//       recognizer.current.startContinuousRecognitionAsync();
+//       setIsRecording(true);
+//     } catch (error) {
+//       console.error('Error accessing media devices:', error);
+//     }
+//   };
+
+//   const handleStopSharing = () => {
+//     if (recognizer.current && isRecording) {
+//       recognizer.current.stopContinuousRecognitionAsync();
+//       setIsRecording(false);
+//     }
+//   };
+
+//   const handleAnswerFromServer = (answer) => {
+//     setQAHistory(prevHistory => {
+//       const lastQuestionIndex = prevHistory.length - 1;
+
+//       if (lastQuestionIndex >= 0) {
+//         const updatedQA = [...prevHistory];
+//         updatedQA[lastQuestionIndex].answer = answer;
+//         return updatedQA;
+//       }
+//       return prevHistory;
+//     });
+//   };
+
+//   return (
+//     <div>
+//       {!isRecording ? (
+//         <button onClick={handleStartSharing}>Start Sharing</button>
+//       ) : (
+//         <button onClick={handleStopSharing}>Stop Sharing</button>
+//       )}
+//       <SharedContent sharedStream={sharedContent} videoRef={videoRef} qaHistory={qaHistory} />
+//     </div>
+//   );
+// };
+
+// const SharedContent = ({ sharedStream, videoRef, qaHistory }) => {
+//   useEffect(() => {
+//     if (sharedStream && videoRef.current) {
+//       videoRef.current.srcObject = sharedStream;
+
+//       // Add event listener for errors (optional but useful for debugging)
+//       videoRef.current.addEventListener('error', (event) => {
+//         console.error('Video playback error:', event);
+//       });
+//     }
+
+//     return () => {
+//       if (videoRef.current && videoRef.current.srcObject) {
+//         videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+//       }
+//     };
+//   }, [sharedStream, videoRef]);
+
+//   return (
+//     <div>
+//       <h2>Shared Content</h2>
+//       <video ref={videoRef} controls autoPlay style={{ width: '100%', height: 'auto',visibility:'hidden' }} />
+//       {qaHistory.map((qa, index) => (
+//         <div key={index} style={{ marginBottom: '20px' }}>
+//           <div style={{ marginBottom: '10px' }}>
+//             <h4>Question</h4>
+//             <p>{qa.question}</p>
+//             <p>{qa.startTime.toLocaleTimeString()}</p>
+//           </div>
+//           <div style={{ marginBottom: '10px' }}>
+//             <h4>Answer</h4>
+//             <p>{qa.answer}</p>
+//             <p>{qa.startTime.toLocaleTimeString()}</p>
+//           </div>
+//         </div>
+//       ))}
+//     </div>
+//   );
+// };
+
+// export default TabSharing;
+
+
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 
@@ -687,6 +1073,7 @@ const TabSharing = () => {
   const [sharedContent, setSharedContent] = useState(null);
   const [qaHistory, setQAHistory] = useState([]); // Store question history
   const [isRecording, setIsRecording] = useState(false);
+  const [currentAnswer, setCurrentAnswer] = useState(''); // For managing the progressive answer
 
   const videoRef = useRef(null);
   const speechConfig = useRef(null);
@@ -732,24 +1119,36 @@ const TabSharing = () => {
 
       recognizer.current.recognizing = (s, e) => {
         console.log(`RECOGNIZING: Text=${e.result.text}`);
+        setQAHistory(prevHistory => {
+          const lastQuestionIndex = prevHistory.length - 1;
+
+          if (lastQuestionIndex >= 0 && prevHistory[lastQuestionIndex].completionTime === null) {
+            const updatedQA = [...prevHistory];
+            updatedQA[lastQuestionIndex].question = e.result.text;
+            return updatedQA;
+          } else {
+            const newQuestion = {
+              question: e.result.text,
+              startTime: new Date(),
+              completionTime: null,
+              answer: '', // Initialize an empty answer field
+            };
+            return [...prevHistory, newQuestion];
+          }
+        });
       };
 
       recognizer.current.recognized = (s, e) => {
         if (e.result.reason === sdk.ResultReason.RecognizedSpeech) {
           console.log(`RECOGNIZED: Text=${e.result.text}`);
-          const currentTime = new Date();
-          const newQuestion = {
-            question: e.result.text,
-            startTime: currentTime,
-            completionTime: null,
-            updateTimes: [currentTime],
-            currentTime: currentTime,
-            answer: '', // Initialize an empty answer field
-          };
+          setQAHistory(prevHistory => {
+            const updatedQA = [...prevHistory];
+            updatedQA[updatedQA.length - 1].question = e.result.text;
+            updatedQA[updatedQA.length - 1].completionTime = new Date();
+            return updatedQA;
+          });
 
-          setQAHistory(prevHistory => [...prevHistory, newQuestion]);
-
-          socket.emit('questionToServer', { question: e.result.text }); // Send question to backend via Socket.io
+          socket.emit('questionToServer', { question: e.result.text, history: qaHistory }); // Send question to backend via Socket.io
         } else if (e.result.reason === sdk.ResultReason.NoMatch) {
           console.log('NOMATCH: Speech could not be recognized.');
         }
@@ -795,17 +1194,40 @@ const TabSharing = () => {
   };
 
   const handleAnswerFromServer = (answer) => {
-    setQAHistory(prevHistory => {
-      const lastQuestionIndex = prevHistory.length - 1;
-
-      if (lastQuestionIndex >= 0) {
-        const updatedQA = [...prevHistory];
-        updatedQA[lastQuestionIndex].answer = answer;
-        return updatedQA;
-      }
-      return prevHistory;
-    });
+    setCurrentAnswer(answer); // Set the full answer to progressively display it
   };
+
+  // useEffect to handle the word-by-word update
+  useEffect(() => {
+    if (currentAnswer) {
+      const words = currentAnswer.split(' ');
+      let currentWordIndex = 0;
+      let displayedText = '';
+
+      const interval = 50; // Time between words in milliseconds
+
+      const timer = setInterval(() => {
+        if (currentWordIndex < words.length) {
+          displayedText += words[currentWordIndex] + ' ';
+          setQAHistory(prevHistory => {
+            const lastQuestionIndex = prevHistory.length - 1;
+
+            if (lastQuestionIndex >= 0) {
+              const updatedQA = [...prevHistory];
+              updatedQA[lastQuestionIndex].answer = displayedText;
+              return updatedQA;
+            }
+            return prevHistory;
+          });
+          currentWordIndex++;
+        } else {
+          clearInterval(timer);
+        }
+      }, interval);
+
+      return () => clearInterval(timer);
+    }
+  }, [currentAnswer]);
 
   return (
     <div>
@@ -840,17 +1262,13 @@ const SharedContent = ({ sharedStream, videoRef, qaHistory }) => {
   return (
     <div>
       <h2>Shared Content</h2>
-      <video ref={videoRef} controls autoPlay style={{ width: '100%', height: 'auto' }} />
+      <video ref={videoRef} controls autoPlay style={{ width: '1px', height: '1px', visibility: 'hidden' }} />
       {qaHistory.map((qa, index) => (
         <div key={index} style={{ marginBottom: '20px' }}>
           <div style={{ marginBottom: '10px' }}>
             <h4>Question</h4>
             <p>{qa.question}</p>
-            <div>
-              {qa.updateTimes.map((time, timeIndex) => (
-                <p key={timeIndex}>{time.toLocaleTimeString()}</p>
-              ))}
-            </div>
+            <p>{qa.startTime.toLocaleTimeString()}</p>
           </div>
           <div style={{ marginBottom: '10px' }}>
             <h4>Answer</h4>
@@ -863,3 +1281,4 @@ const SharedContent = ({ sharedStream, videoRef, qaHistory }) => {
 };
 
 export default TabSharing;
+
