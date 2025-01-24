@@ -2908,155 +2908,517 @@
 
 
 
-"use client"
-import React, { useState, useEffect, useRef } from 'react';
-import io from 'socket.io-client';
-import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
-import axios from 'axios';
-const socket = io('http://localhost:5000'); // Connect to your Socket.io server
+// "use client"
+// import React, { useState, useEffect, useRef } from 'react';
+// import io from 'socket.io-client';
+// import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
+// import axios from 'axios';
+// const socket = io('http://localhost:5000'); // Connect to your Socket.io server
+
+// const TabSharing = () => {
+//   const [sharedContent, setSharedContent] = useState(null);
+//   const [qaHistory, setQAHistory] = useState([]); // Store question history
+//   const [isRecording, setIsRecording] = useState(false);
+//   const [isPaused, setIsPaused] = useState(false); // For managing the paused state
+//   const [currentQuestion, setCurrentQuestion] = useState(''); // For managing the current question
+//   const [currentAnswer, setCurrentAnswer] = useState(''); // For managing the progressive answer
+//   const [userResponse, setUserResponse] = useState(''); // For managing the user's response
+
+//   const videoRef = useRef(null);
+//   const speechConfig = useRef(null);
+//   const audioConfig = useRef(null);
+//   const recognizer = useRef(null);
+//   const recognitionRef = useRef(null); // For Web Speech API
+
+//   useEffect(() => {
+//     // Initialize Azure Speech SDK configurations
+//     speechConfig.current = sdk.SpeechConfig.fromSubscription('ba35918e9cab49f2a983089f2f4a2fc0', 'southcentralus');
+//     speechConfig.current.speechRecognitionLanguage = 'en-US';
+
+//     // Socket.io event listeners
+//     socket.on('answerFromServer', handleAnswerFromServer);
+
+//     return () => {
+//       socket.off('answerFromServer', handleAnswerFromServer);
+//       handleStopSharing(); // Ensure to stop sharing when component unmounts
+//     };
+//   }, []);
+//   const initializeDeepgramSocketQuestion = async (audioStream) => {
+//     try {
+//       // Initialize WebSocket connection to Deepgram API
+//       const deepgramApiKey = "8860b99d0e51da3cef304e73b59acb87ebac0217"; // Replace with your actual Deepgram API key
+//       const wsUrl = `wss://api.deepgram.com/v1/listen`;
+//       const KEEP_ALIVE_INTERVAL = 30000; // 30 seconds
+  
+//       const ws = new WebSocket(wsUrl, ['token', deepgramApiKey]);
+  
+//       let keepAliveInterval; // To store the interval ID for cleanup
+  
+//       ws.onopen = () => {
+//         console.log('WebSocket connected!');
+  
+//         // Start the keep-alive mechanism
+//         keepAliveInterval = setInterval(() => {
+//           if (ws.readyState === WebSocket.OPEN) {
+//             ws.send(JSON.stringify({ type: 'ping' })); // Send a ping or empty message
+//             console.log('Keep-alive ping sent.');
+//           }
+//         }, KEEP_ALIVE_INTERVAL);
+  
+//         // Create MediaRecorder for the audio part of the stream
+//         const mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+//         const audioChunks = [];
+  
+//         mediaRecorder.ondataavailable = (event) => {
+//           audioChunks.push(event.data);
+//         };
+  
+//         mediaRecorder.onstop = () => {
+//           const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+//           audioBlob.arrayBuffer().then((buffer) => {
+//             if (ws.readyState === WebSocket.OPEN) {
+//               ws.send(buffer); // Send the audio buffer to Deepgram for transcription
+//             }
+//           });
+//         };
+  
+//         mediaRecorder.start();
+  
+//         // Stop the recording after a certain time (e.g., 10 seconds)
+//         setTimeout(() => {
+//           mediaRecorder.stop();
+//         }, 20000000); // Adjust the time according to your requirements
+//       };
+  
+//       ws.onmessage = (event) => {
+//         const response = JSON.parse(event.data);
+//         if (response.channel && response.channel.alternatives) {
+//           console.log('Transcription:', response.channel.alternatives[0].transcript);
+//           setCurrentQuestion(response.channel.alternatives[0].transcript);
+//         }
+//       };
+  
+//       ws.onerror = (error) => {
+//         console.error('WebSocket Error:', error);
+//       };
+  
+//       ws.onclose = () => {
+//         console.log('WebSocket connection closed.');
+//         clearInterval(keepAliveInterval); // Clear the keep-alive interval on close
+//       };
+//     } catch (error) {
+//       console.error('Error with Deepgram WebSocket:', error);
+//     }
+//   };
+  
+//   // const DEEPGRAM_API_KEY = '8860b99d0e51da3cef304e73b59acb87ebac0217'; // Replace with your Deepgram API Key
+//   // const DEEPGRAM_API_URL = 'https://api.deepgram.com/v1/listen'; // REST API URL
+  
+//   // const initializeDeepgramSocketQuestion = async (audioStream) => {
+//   //   try {
+//   //     const audioChunks = [];
+//   //     const mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/wav' });
+  
+//   //     // Collect audio chunks
+//   //     mediaRecorder.ondataavailable = (event) => {
+//   //       audioChunks.push(event.data);
+//   //     };
+  
+//   //     // Once recording stops, send audio chunks to Deepgram's API
+//   //     mediaRecorder.onstop = async () => {
+//   //       const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+//   //       const audioBuffer = await audioBlob.arrayBuffer();
+  
+//   //       // Create form data to send to Deepgram's API
+//   //       const formData = new FormData();
+//   //       formData.append('audio', new Blob([audioBuffer]), 'audio.wav');
+  
+//   //       try {
+//   //         const response = await axios.post(DEEPGRAM_API_URL, formData, {
+//   //           headers: {
+//   //             'Authorization': `Token ${DEEPGRAM_API_KEY}`,
+//   //             'Content-Type': 'audio/wav',
+//   //           }
+//   //         });
+  
+//   //         // Handle transcription response
+//   //         const transcription = response.data;
+//   //         console.log('Transcription:', transcription);
+//   //         setCurrentQuestion(transcription.channel.alternatives[0].transcript);
+//   //       } catch (error) {
+//   //         console.error('Error sending audio to Deepgram API:', error);
+//   //       }
+//   //     };
+  
+//   //     // Start recording audio
+//   //     mediaRecorder.start();
+  
+//   //     // Stop the recording after a specific duration (e.g., 10 seconds)
+//   //     setTimeout(() => {
+//   //       mediaRecorder.stop();
+//   //     }, 10000); // Adjust duration as needed
+  
+//   //   } catch (error) {
+//   //     console.error('Error with Deepgram API request:', error);
+//   //   }
+//   // };
+//   const initializeDeepgramSocketUserAnswer = async (audioStream) => {
+//     // const deepgramApiKey = "8860b99d0e51da3cef304e73b59acb87ebac0217"; // Replace with your actual Deepgram API key
+//     // const wsUrl = `wss://api.deepgram.com/v1/listen?encoding=linear16&sample_rate=16000&channels=1&model=nova-2&smart_format=true&punctuate=true`;
+
+    
+//     // const ws = new WebSocket(wsUrl,['token',deepgramApiKey]);
+    
+//     // // When the WebSocket connection is open
+//     // ws.onopen = () => {
+//     //   console.log('WebSocket connected!');
+      
+//     //   // Create MediaRecorder for the audio part of the stream
+//     //   const mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+//     //   const audioChunks = [];
+      
+//     //   // When data is available (audio chunk is recorded)
+//     //   mediaRecorder.ondataavailable = (event) => {
+//     //     audioChunks.push(event.data);
+//     //   };
+      
+//     //   // When the recording stops
+//     //   mediaRecorder.onstop = () => {
+//     //     // Combine audio chunks into a single Blob (WAV format)
+//     //     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+//     //     audioBlob.arrayBuffer().then((buffer) => {
+//     //       // Send audio data to Deepgram via WebSocket
+//     //       ws.send(buffer);  // Send the audio buffer to Deepgram for transcription
+//     //     });
+//     //   };
+      
+//     //   // Start recording the audio stream
+//     //   mediaRecorder.start();
+      
+//     //   // Stop the recording after a certain time (e.g., 10 seconds)
+//     //   setTimeout(() => {
+//     //     mediaRecorder.stop();
+//     //   }, 20000000);  // Adjust the time according to your requirements
+//     // };
+    
+//     // // Handle incoming messages (transcriptions) from Deepgram
+//     // ws.onmessage = (event) => {
+//     //   const response = JSON.parse(event.data);
+//     //   if (response.channel && response.channel.alternatives) {
+//     //     console.log('Transcription:', response.channel.alternatives[0].transcript);
+//     //     setCurrentQuestion(response.channel.alternatives[0].transcript);
+//     //   }
+//     // };
+    
+//     // // Handle errors with the WebSocket connection
+//     // ws.onerror = (error) => {
+//     //   console.log('WebSocket Error:', error);
+//     // };
+    
+//     // // Handle WebSocket closure
+//     // ws.onclose = () => {
+//     //   console.log('WebSocket connection closed.');
+//     // };
+     
+//   };
+//   useEffect(() => {
+//     if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+//       recognitionRef.current = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+//       recognitionRef.current.lang = 'en-US';
+//       recognitionRef.current.continuous = true;
+//       recognitionRef.current.interimResults = true;
+      
+//       recognitionRef.current.onresult = (event) => {
+//         if (!isPaused) {
+//           const transcript = Array.from(event.results)
+//             .map(result => result[0].transcript)
+//             .join('');
+//           setUserResponse(transcript);
+          
+//           // Update QA history
+//           setQAHistory(prevHistory => {
+//             const lastQuestionIndex = prevHistory.length - 1;
+//             if (lastQuestionIndex >= 0) {
+//               const updatedQA = [...prevHistory];
+//               updatedQA[lastQuestionIndex].userResponse = transcript;
+//               return updatedQA;
+//             }
+//             return prevHistory;
+//           });
+//         }
+//       };
+
+//       recognitionRef.current.onerror = (event) => {
+//         console.error('Speech recognition error:', event.error);
+//       };
+
+//       recognitionRef.current.onend = () => {
+//         if (isRecording) {
+//           recognitionRef.current.start(); // Restart recognition if recording
+//         }
+//       };
+//     } else {
+//       console.warn('Speech Recognition API not supported in this browser.');
+//     }
+//   }, [isRecording, isPaused]);
+
+//   const handleStartSharing = async () => {
+//     try {
+      
+
+//       const stream = await navigator.mediaDevices.getDisplayMedia({
+//         video: true,
+//         audio: {
+//           systemAudio: 'include',
+//           echoCancellation: true,
+//           noiseSuppression: true,
+//           sampleRate: 44100, // Higher sample rate for better quality
+//         },
+//       });
+      
+//       if (!stream) {
+//         throw new Error('Failed to obtain media stream.');
+//       }
+      
+//       setSharedContent(stream);
+
+
+//       const audioTracks = stream.getAudioTracks();
+//       const audioStream = new MediaStream([audioTracks[0]]);
+//       console.log('audioStream',audioStream);
+//       await initializeDeepgramSocketQuestion(audioStream);
+//       // audioConfig.current = sdk.AudioConfig.fromStreamInput(audioStream);
+//       // recognizer.current = new sdk.SpeechRecognizer(speechConfig.current, audioConfig.current);
+
+//       // recognizer.current.recognizing = (s, e) => {
+//       //   if (!isPaused) {
+//       //     console.log(`RECOGNIZING: Text=${e.result.text}`);
+//       //     setCurrentQuestion(e.result.text); // Update current question
+         
+//       //   }
+//       // };
+
+//       // recognizer.current.canceled = (s, e) => {
+//       //   console.log(`CANCELED: Reason=${e.reason}`);
+//       //   if (e.reason === sdk.CancellationReason.Error) {
+//       //     console.error(`CANCELED: ErrorDetails=${e.errorDetails}`);
+//       //   }
+//       //   recognizer.current.stopContinuousRecognitionAsync();
+//       // };
+
+//       // recognizer.current.sessionStopped = (s, e) => {
+//       //   console.log('Session stopped.');
+//       //   recognizer.current.stopContinuousRecognitionAsync();
+//       // };
+
+//       // recognizer.current.startContinuousRecognitionAsync();
+//       // setIsRecording(true);
+
+//       // Start recognizing user's audio with Web Speech API
+//       // if (recognitionRef.current) {
+//       //   recognitionRef.current.start();
+//       // }
+//       const userAudioStream = await navigator.mediaDevices.getUserMedia({
+//         audio: {
+//           echoCancellation: true,
+//           noiseSuppression: true,
+//           sampleRate: 44100,
+//         },
+//       });
+//       await initializeDeepgramSocketUserAnswer(userAudioStream);
+//       // setUserSharedContent(userAudioStream);
+//     //   const userAudioConfig = sdk.AudioConfig.fromStreamInput(userAudioStream);
+//     //   userAudioRecognizer.current = new sdk.SpeechRecognizer(
+//     //     speechConfig.current,
+//     //     userAudioConfig
+//     //   );
+
+//     //   userAudioRecognizer.current.recognizing = (s, e) => {
+//     //      setUserResponse(e.result.text);
+//     //     };
+//     //  userAudioRecognizer.current.canceled = (s, e) => {
+//     //     if (e.reason === sdk.CancellationReason.Error) {
+//     //       console.error(`CANCELED: ErrorDetails=${e.errorDetails}`);
+//     //     }
+//     //     userAudioRecognizer.current.stopContinuousRecognitionAsync();
+//     //   };
+
+//     //   userAudioRecognizer.current.sessionStopped = (s, e) => {
+//     //     console.log("User audio session stopped.", userResponse);
+
+//     //     userAudioRecognizer.current.stopContinuousRecognitionAsync();
+//     //   };
+
+//     //   userAudioRecognizer.current.startContinuousRecognitionAsync();
+
+//     } catch (error) {
+//       console.error('Error accessing media devices:', error);
+//     }
+//   };
+
+//   const handleStopSharing = () => {
+//     if (recognizer.current && isRecording) {
+//       recognizer.current.stopContinuousRecognitionAsync();
+//       setIsRecording(false);
+//     }
+
+//     if (recognitionRef.current) {
+//       recognitionRef.current.stop();
+//     }
+//   };
+
+//   const handleAnswerFromServer = (answer) => {
+//     console.log('Received answer from server:', answer.answer);
+//     setCurrentAnswer(answer.answer);
+//   };
+
+//   const handlePause = () => {
+//     if (isPaused) {
+//       // Resume sharing
+//       handleStartSharing();
+//       setIsPaused(false);
+//     } else {
+//       // Pause sharing
+//       if (recognizer.current) {
+//         recognizer.current.stopContinuousRecognitionAsync();
+//       }
+//       if (recognitionRef.current) {
+//         recognitionRef.current.stop();
+//       }
+//       setIsPaused(true);
+//     }
+//   };
+
+//   const handleComplete = () => {
+//     handleStopSharing();
+//     // Navigate to another page
+//     window.location.href = '/another-page'; // Replace '/another-page' with your actual target route
+//   };
+
+//   useEffect(() => {
+//     if (!isPaused) {
+//       handleStartSharing();
+//     }
+
+//     return () => {
+//       handleStopSharing();
+//     };
+//   }, [isPaused]);
+
+//   return (
+//     <div style={{ display: 'flex', border: '1px solid black' }}>
+//       <div style={{ flex: 1, width: '20%', border: '1px solid black', padding: '10px' }}>
+//         <InterviewerSection question={currentQuestion} />
+//         {/* <button onClick={handlePause}>{isPaused ? 'Resume' : 'Pause'}</button>
+//         <button onClick={handleComplete}>Complete</button> */}
+//       </div>
+//       <div style={{ flex: 4, width: '80%', border: '1px solid black', padding: '10px' }}>
+//         <SharedContent 
+//           sharedStream={sharedContent} 
+//           // currentAnswer={currentAnswer} 
+//           videoRef={videoRef} 
+//           // qaHistory={qaHistory} 
+//          userResponse={userResponse}
+//         />
+//       </div>
+//     </div>
+//   );
+// };
+
+// const InterviewerSection = ({ question }) => {
+//   return (
+//     <div>
+//       <h2>Tab Section</h2>
+//       <p>{question}</p>
+//     </div>
+//   );
+// };
+
+// const SharedContent = ({ sharedStream, currentAnswer, videoRef, qaHistory, userResponse }) => {
+//   useEffect(() => {
+//     if (videoRef.current && sharedStream) {
+//       videoRef.current.srcObject = sharedStream;
+//     }
+//   }, [sharedStream]);
+
+//   return (
+//     <div>
+      
+     
+//       <div>
+//         <h3>User Section</h3>
+       
+//         {userResponse && <p>{userResponse}</p>}
+//       </div>
+//       <div>
+//         {/* <h3>QA History</h3> */}
+//         {/* {qaHistory.map((qa, index) => (
+//           <div key={index}>
+//             <p><strong>Question:</strong> {qa.question}</p>
+//             <p><strong>Answer:</strong> {qa.answer}</p>
+//             <p><strong>User Response:</strong> {qa.userResponse}</p>
+//             <p><strong>Start Time:</strong> {qa.startTime?.toLocaleString()}</p>
+//             <p><strong>Completion Time:</strong> {qa.completionTime?.toLocaleString()}</p>
+//           </div>
+//         ))} */}
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default TabSharing;
+
+
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+import io from "socket.io-client";
+
+const socket = io("http://localhost:5000"); // Connect to your Socket.io server
 
 const TabSharing = () => {
   const [sharedContent, setSharedContent] = useState(null);
-  const [qaHistory, setQAHistory] = useState([]); // Store question history
+  const [qaHistory, setQAHistory] = useState([]); // Store Q&A history
   const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false); // For managing the paused state
-  const [currentQuestion, setCurrentQuestion] = useState(''); // For managing the current question
-  const [currentAnswer, setCurrentAnswer] = useState(''); // For managing the progressive answer
-  const [userResponse, setUserResponse] = useState(''); // For managing the user's response
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState("");
+  const [userResponse, setUserResponse] = useState("");
 
   const videoRef = useRef(null);
-  const speechConfig = useRef(null);
-  const audioConfig = useRef(null);
-  const recognizer = useRef(null);
   const recognitionRef = useRef(null); // For Web Speech API
+  const deepgramSocket = useRef(null);
 
   useEffect(() => {
-    // Initialize Azure Speech SDK configurations
-    speechConfig.current = sdk.SpeechConfig.fromSubscription('ba35918e9cab49f2a983089f2f4a2fc0', 'southcentralus');
-    speechConfig.current.speechRecognitionLanguage = 'en-US';
-
     // Socket.io event listeners
-    socket.on('answerFromServer', handleAnswerFromServer);
+    socket.on("answerFromServer", handleAnswerFromServer);
 
     return () => {
-      socket.off('answerFromServer', handleAnswerFromServer);
-      handleStopSharing(); // Ensure to stop sharing when component unmounts
+      socket.off("answerFromServer", handleAnswerFromServer);
+      handleStopSharing(); // Ensure cleanup on unmount
     };
   }, []);
-  const initializeDeepgramSocketQuestion = async (audioStream) => {
-    try {
-      // Initialize WebSocket connection to Deepgram API
-      const deepgramApiKey = "8860b99d0e51da3cef304e73b59acb87ebac0217"; // Replace with your actual Deepgram API key
-      const wsUrl = `wss://api.deepgram.com/v1/listen?access_token=${deepgramApiKey}&encoding=linear16&sample_rate=16000&channels=1&model=nova-2&smart_format=true&punctuate=true`;
 
-      
-      const ws = new WebSocket(wsUrl);
-      
-      // When the WebSocket connection is open
-      ws.onopen = () => {
-        console.log('WebSocket connected!');
-        
-        // Create MediaRecorder for the audio part of the stream
-        const mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/wav' });
-        const audioChunks = [];
-        
-        // When data is available (audio chunk is recorded)
-        mediaRecorder.ondataavailable = (event) => {
-          audioChunks.push(event.data);
-        };
-        
-        // When the recording stops
-        mediaRecorder.onstop = () => {
-          // Combine audio chunks into a single Blob (WAV format)
-          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-          audioBlob.arrayBuffer().then((buffer) => {
-            // Send audio data to Deepgram via WebSocket
-            ws.send(buffer);  // Send the audio buffer to Deepgram for transcription
-          });
-        };
-        
-        // Start recording the audio stream
-        mediaRecorder.start();
-        
-        // Stop the recording after a certain time (e.g., 10 seconds)
-        setTimeout(() => {
-          mediaRecorder.stop();
-        }, 10000);  // Adjust the time according to your requirements
-      };
-      
-      // Handle incoming messages (transcriptions) from Deepgram
-      ws.onmessage = (event) => {
-        const response = JSON.parse(event.data);
-        if (response.channel && response.channel.alternatives) {
-          console.log('Transcription:', response.channel.alternatives[0].transcript);
-          setCurrentQuestion(response.channel.alternatives[0].transcript);
-        }
-      };
-      
-      // Handle errors with the WebSocket connection
-      ws.onerror = (error) => {
-        console.error('WebSocket Error:', error);
-      };
-      
-      // Handle WebSocket closure
-      ws.onclose = () => {
-        console.log('WebSocket connection closed.');
-      };
-    } catch (error) {
-      console.error('Error with Deepgram WebSocket:', error);
-    }
-  };
-
-  const initializeDeepgramSocketUserAnswer = async (audioStream) => {
-    try {
-      // const deepgramApiKey = "YOUR_DEEPGRAM_API_KEY"; // Replace with your Deepgram API key
-      // const response = await axios.post(
-      //   "https://api.deepgram.com/v1/listen",
-      //   audioStream,
-      //   {
-      //     headers: {
-      //       Authorization: `Token ${deepgramApiKey}`,
-      //       "Content-Type": "audio/wav", // Adjust format as needed
-      //     },
-      //   }
-      // );
-
-      // deepgramSocketRef.current = response.data;
-      // console.log("Deepgram socket initialized:", deepgramSocketRef.current);
-
-      // deepgramSocketRef.current.on("transcript", (transcription) => {
-      //   if (!isPaused && transcription?.results?.length) {
-      //     const transcriptText = transcription.results
-      //       .map((result) => result.alternatives[0].transcript)
-      //       .join("");
-      //     setUserResponse(transcriptText);
-      //   }
-      // });
-    } catch (error) {
-      console.error("Error initializing Deepgram socket:", error);
-    }
-  };
   useEffect(() => {
+    // Initialize speech recognition
     if (window.SpeechRecognition || window.webkitSpeechRecognition) {
       recognitionRef.current = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-      recognitionRef.current.lang = 'en-US';
+      recognitionRef.current.lang = "en-US";
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
-      
+
       recognitionRef.current.onresult = (event) => {
         if (!isPaused) {
           const transcript = Array.from(event.results)
-            .map(result => result[0].transcript)
-            .join('');
+            .map((result) => result[0].transcript)
+            .join("");
           setUserResponse(transcript);
-          
+
           // Update QA history
-          setQAHistory(prevHistory => {
-            const lastQuestionIndex = prevHistory.length - 1;
-            if (lastQuestionIndex >= 0) {
-              const updatedQA = [...prevHistory];
-              updatedQA[lastQuestionIndex].userResponse = transcript;
-              return updatedQA;
+          setQAHistory((prevHistory) => {
+            const lastIndex = prevHistory.length - 1;
+            if (lastIndex >= 0) {
+              const updatedHistory = [...prevHistory];
+              updatedHistory[lastIndex].userResponse = transcript;
+              return updatedHistory;
             }
             return prevHistory;
           });
@@ -3064,194 +3426,157 @@ const TabSharing = () => {
       };
 
       recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
+        console.error("Speech recognition error:", event.error);
       };
 
       recognitionRef.current.onend = () => {
         if (isRecording) {
-          recognitionRef.current.start(); // Restart recognition if recording
+          recognitionRef.current.start(); // Restart recognition if still recording
         }
       };
     } else {
-      console.warn('Speech Recognition API not supported in this browser.');
+      console.warn("Speech Recognition API not supported in this browser.");
     }
   }, [isRecording, isPaused]);
 
+  const initializeDeepgram = (mediaRecorder) => {
+    const deepgramAccessToken = "8860b99d0e51da3cef304e73b59acb87ebac0217";
+
+    deepgramSocket.current = new WebSocket("wss://api.deepgram.com/v1/listen", [
+      "token",
+      deepgramAccessToken,
+    ]);
+
+    deepgramSocket.current.onopen = () => {
+      console.log("Deepgram WebSocket connection opened.");
+      mediaRecorder.addEventListener("dataavailable", (event) => {
+        if (deepgramSocket.current.readyState === WebSocket.OPEN) {
+          deepgramSocket.current.send(event.data);
+        }
+      });
+      mediaRecorder.start(250); // Record in chunks of 250ms
+    };
+
+    deepgramSocket.current.onmessage = (message) => {
+      const data = JSON.parse(message.data);
+      if (data.channel && data.channel.alternatives[0]) {
+        const transcript = data.channel.alternatives[0].transcript;
+        setCurrentQuestion(transcript);
+        console.log("Deepgram Transcript:", transcript);
+      }
+    };
+
+    deepgramSocket.current.onerror = (error) => {
+      console.error("Deepgram WebSocket error:", error);
+    };
+
+    deepgramSocket.current.onclose = () => {
+      console.log("Deepgram WebSocket connection closed.");
+    };
+  };
+
   const handleStartSharing = async () => {
     try {
-      // if (sharedContent) {
-      //   console.log('Already sharing. Skipping start.');
-      //   return;
-      // }
-
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: {
-          systemAudio: 'include',
+          systemAudio: "include",
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 44100, // Higher sample rate for better quality
         },
       });
 
-      if (!stream) {
-        throw new Error('Failed to obtain media stream.');
-      }
-      
+      if (!stream) throw new Error("Failed to obtain media stream.");
       setSharedContent(stream);
 
-
       const audioTracks = stream.getAudioTracks();
-      const audioStream = new MediaStream([audioTracks[0]]);
-      await initializeDeepgramSocketQuestion(audioStream);
-      // audioConfig.current = sdk.AudioConfig.fromStreamInput(audioStream);
-      // recognizer.current = new sdk.SpeechRecognizer(speechConfig.current, audioConfig.current);
+      if (audioTracks.length === 0) {
+        console.error("No audio track found in the stream.");
+        return;
+      }
 
-      // recognizer.current.recognizing = (s, e) => {
-      //   if (!isPaused) {
-      //     console.log(`RECOGNIZING: Text=${e.result.text}`);
-      //     setCurrentQuestion(e.result.text); // Update current question
-         
-      //   }
-      // };
+      const mediaRecorder = new MediaRecorder(stream);
 
-      // recognizer.current.canceled = (s, e) => {
-      //   console.log(`CANCELED: Reason=${e.reason}`);
-      //   if (e.reason === sdk.CancellationReason.Error) {
-      //     console.error(`CANCELED: ErrorDetails=${e.errorDetails}`);
-      //   }
-      //   recognizer.current.stopContinuousRecognitionAsync();
-      // };
+      initializeDeepgram(mediaRecorder);
+      setIsRecording(true);
 
-      // recognizer.current.sessionStopped = (s, e) => {
-      //   console.log('Session stopped.');
-      //   recognizer.current.stopContinuousRecognitionAsync();
-      // };
-
-      // recognizer.current.startContinuousRecognitionAsync();
-      // setIsRecording(true);
-
-      // Start recognizing user's audio with Web Speech API
-      // if (recognitionRef.current) {
-      //   recognitionRef.current.start();
-      // }
-      const userAudioStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
-        },
-      });
-      await initializeDeepgramSocketUserAnswer(userAudioStream);
-      // setUserSharedContent(userAudioStream);
-    //   const userAudioConfig = sdk.AudioConfig.fromStreamInput(userAudioStream);
-    //   userAudioRecognizer.current = new sdk.SpeechRecognizer(
-    //     speechConfig.current,
-    //     userAudioConfig
-    //   );
-
-    //   userAudioRecognizer.current.recognizing = (s, e) => {
-    //      setUserResponse(e.result.text);
-    //     };
-    //  userAudioRecognizer.current.canceled = (s, e) => {
-    //     if (e.reason === sdk.CancellationReason.Error) {
-    //       console.error(`CANCELED: ErrorDetails=${e.errorDetails}`);
-    //     }
-    //     userAudioRecognizer.current.stopContinuousRecognitionAsync();
-    //   };
-
-    //   userAudioRecognizer.current.sessionStopped = (s, e) => {
-    //     console.log("User audio session stopped.", userResponse);
-
-    //     userAudioRecognizer.current.stopContinuousRecognitionAsync();
-    //   };
-
-    //   userAudioRecognizer.current.startContinuousRecognitionAsync();
-
+      if (recognitionRef.current) {
+        recognitionRef.current.start(); // Start speech recognition
+      }
     } catch (error) {
-      console.error('Error accessing media devices:', error);
+      console.error("Error accessing media devices:", error);
     }
   };
 
   const handleStopSharing = () => {
-    if (recognizer.current && isRecording) {
-      recognizer.current.stopContinuousRecognitionAsync();
-      setIsRecording(false);
-    }
+    if (isRecording) setIsRecording(false);
 
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
+
+    if (deepgramSocket.current) {
+      deepgramSocket.current.close();
+    }
+
+    if (sharedContent) {
+      sharedContent.getTracks().forEach((track) => track.stop());
+      setSharedContent(null);
+    }
   };
 
   const handleAnswerFromServer = (answer) => {
-    console.log('Received answer from server:', answer.answer);
-    setCurrentAnswer(answer.answer);
+    console.log("Received answer from server:", answer.answer);
+    setQAHistory((prevHistory) => [
+      ...prevHistory,
+      { question: currentQuestion, answer: answer.answer },
+    ]);
   };
 
   const handlePause = () => {
-    if (isPaused) {
-      // Resume sharing
-      handleStartSharing();
-      setIsPaused(false);
+    setIsPaused(!isPaused);
+    if (!isPaused) {
+      handleStopSharing();
     } else {
-      // Pause sharing
-      if (recognizer.current) {
-        recognizer.current.stopContinuousRecognitionAsync();
-      }
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setIsPaused(true);
+      handleStartSharing();
     }
-  };
-
-  const handleComplete = () => {
-    handleStopSharing();
-    // Navigate to another page
-    window.location.href = '/another-page'; // Replace '/another-page' with your actual target route
   };
 
   useEffect(() => {
-    if (!isPaused) {
-      handleStartSharing();
-    }
-
-    return () => {
-      handleStopSharing();
-    };
+    if (!isPaused) handleStartSharing();
+    return () => handleStopSharing();
   }, [isPaused]);
 
   return (
-    <div style={{ display: 'flex', border: '1px solid black' }}>
-      <div style={{ flex: 1, width: '20%', border: '1px solid black', padding: '10px' }}>
+    <div style={{ display: "flex", border: "1px solid black" }}>
+      <div style={{ flex: 1, width: "20%", padding: "10px" }}>
         <InterviewerSection question={currentQuestion} />
-        {/* <button onClick={handlePause}>{isPaused ? 'Resume' : 'Pause'}</button>
-        <button onClick={handleComplete}>Complete</button> */}
       </div>
-      <div style={{ flex: 4, width: '80%', border: '1px solid black', padding: '10px' }}>
-        <SharedContent 
-          sharedStream={sharedContent} 
-          // currentAnswer={currentAnswer} 
-          videoRef={videoRef} 
-          // qaHistory={qaHistory} 
-         userResponse={userResponse}
+      <div style={{ flex: 4, width: "80%", padding: "10px" }}>
+        <SharedContent
+          sharedStream={sharedContent}
+          userResponse={userResponse}
+          videoRef={videoRef}
         />
       </div>
+      <div>
+        <button onClick={handlePause}>
+          {isPaused ? "Resume Sharing" : "Pause Sharing"}
+        </button>
+        <button onClick={handleStopSharing}>Stop Sharing</button>
+      </div>
     </div>
   );
 };
 
-const InterviewerSection = ({ question }) => {
-  return (
-    <div>
-      <h2>Tab Section</h2>
-      <p>{question}</p>
-    </div>
-  );
-};
+const InterviewerSection = ({ question }) => (
+  <div>
+    <h2>Interviewer</h2>
+    <p>{question || "Waiting for question..."}</p>
+  </div>
+);
 
-const SharedContent = ({ sharedStream, currentAnswer, videoRef, qaHistory, userResponse }) => {
+const SharedContent = ({ sharedStream, videoRef, userResponse }) => {
   useEffect(() => {
     if (videoRef.current && sharedStream) {
       videoRef.current.srcObject = sharedStream;
@@ -3260,24 +3585,15 @@ const SharedContent = ({ sharedStream, currentAnswer, videoRef, qaHistory, userR
 
   return (
     <div>
-      
-     
+      <h3>Shared Content</h3>
+      {/* {sharedStream ? (
+        <video ref={videoRef} autoPlay playsInline style={{ width: "100%" }} />
+      ) : (
+        <p>No content being shared.</p>
+      )} */}
       <div>
-        <h3>User Section</h3>
-       
-        {userResponse && <p>{userResponse}</p>}
-      </div>
-      <div>
-        {/* <h3>QA History</h3> */}
-        {/* {qaHistory.map((qa, index) => (
-          <div key={index}>
-            <p><strong>Question:</strong> {qa.question}</p>
-            <p><strong>Answer:</strong> {qa.answer}</p>
-            <p><strong>User Response:</strong> {qa.userResponse}</p>
-            <p><strong>Start Time:</strong> {qa.startTime?.toLocaleString()}</p>
-            <p><strong>Completion Time:</strong> {qa.completionTime?.toLocaleString()}</p>
-          </div>
-        ))} */}
+        <h4>User Response</h4>
+        <p>{userResponse}</p>
       </div>
     </div>
   );
